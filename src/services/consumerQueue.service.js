@@ -16,19 +16,39 @@ const messageService = {
     try {
       const { channel } = await connectToRabbitMQ();
       const notiQueue = 'notificationQueueProcess';
-      const timeExpried = 15000;
-      setTimeout(() => { // test truong hop tin nhan khong duoc xu li de vào dlx
-        channel.consume(
-          notiQueue,
-          (msg) => {
-            console.log(
-              `Received message: ${notiQueue}::`,
-              msg.content.toString()
-            );
-          },
-          { noAck: true }
-        );
-      }, timeExpried);
+      // test truong hop tin nhan ttl khong duoc xu li de vào dlx
+      // 1.TTL
+      // const timeExpried = 15000;
+      // setTimeout(() => { // test truong hop tin nhan khong duoc xu li de vào dlx
+      //   channel.consume(
+      //     notiQueue,
+      //     (msg) => {
+      //       console.log(
+      //         `Received message: ${notiQueue}::`,
+      //         msg.content.toString()
+      //       );
+      //     },
+      //     { noAck: true }
+      //   );
+      // }, timeExpried);
+
+      // 2. Logic error
+      await channel.consume(notiQueue, (msg) => {
+        try {
+          const numberTest = Math.random();
+          console.log({ numberTest });
+          if (numberTest < 0.8) {
+            throw new Error('Logic error');
+          }
+          console.log(
+            `Received message: ${notiQueue}::`,
+            msg.content.toString()
+          );
+          channel.ack(msg);
+        } catch (error) {
+          channel.nack(msg, true, false);
+        }
+      });
     } catch (error) {
       console.error(`Error in consumerToQueueNormal::`, error);
     }
